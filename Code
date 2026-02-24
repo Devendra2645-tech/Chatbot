@@ -1,0 +1,87 @@
+import random
+from datetime import datetime
+
+print("Chatbot: Hey! I'm your smart chatbot.")
+print("Type 'bye' to exit.\n")
+
+user_name = None
+
+greetings = [
+    "Hey there!",
+    "Hello!",
+    "Hi! Nice to see you.",
+    "Yo! What's up?"
+]
+
+how_are_you_responses = [
+    "I'm doing great 😄",
+    "All good here!",
+    "Running smoothly!",
+    "Feeling very binary today 🤖"
+]
+
+thanks_responses = [
+    "You're welcome!",
+    "No problem 😄",
+    "Anytime!",
+    "Glad I could help!"
+]
+
+while True:
+    user = input("You: ").lower()
+
+    # exit
+    if user == "bye":
+        print("Chatbot: Goodbye! Catch you later.")
+        break
+
+    # remember name
+    elif "my name is" in user:
+        user_name = user.replace("my name is", "").strip().title()
+        print(f"Chatbot: Nice to meet you, {user_name}!")
+
+    elif "what is my name" in user:
+        if user_name:
+            print(f"Chatbot: Your name is {user_name}.")
+        else:
+            print("Chatbot: I don't know your name yet.")
+
+    # greetings
+    elif any(word in user for word in ["hi", "hello", "hey"]):
+        print("Chatbot:", random.choice(greetings))
+
+    # feelings
+    elif "how are you" in user:
+        print("Chatbot:", random.choice(how_are_you_responses))
+
+    # thanks (FIXED)
+    elif "thank" in user:
+        print("Chatbot:", random.choice(thanks_responses))
+
+    # time feature
+    elif "time" in user:
+        now = datetime.now().strftime("%H:%M:%S")
+        print("Chatbot: Current time is", now)
+
+    # calculator (type: calc 2+2)
+    elif user.startswith("calc"):
+        try:
+            expression = user.replace("calc", "").strip()
+            result = eval(expression)
+            print("Chatbot: Result =", result)
+        except:
+            print("Chatbot: Invalid calculation.")
+
+    # help
+    elif "help" in user:
+        print("Chatbot: Try greeting me, tell me your name, ask time, say thanks, or use calc 2+2")
+
+    # default response
+    else:
+        print("Chatbot: Hmm... I'm still learning that one.")
+
+# save chat session time
+with open("chat_log.txt", "a") as file:
+    file.write(f"Session ended at {datetime.now()}\n")
+
+print("Chat log saved.")
