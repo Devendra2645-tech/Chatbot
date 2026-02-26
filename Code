@@ -1,87 +1,157 @@
-import random
-from datetime import datetime
+import tkinter as tk
+from tkinter import scrolledtext
+import datetime
+import re
+import ast
+import operator
 
-print("Chatbot: Hey! I'm your smart chatbot.")
-print("Type 'bye' to exit.\n")
+# -----------------------------
+# Safe math evaluator (no eval)
+# -----------------------------
+ops = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.Pow: operator.pow,
+    ast.USub: operator.neg,
+}
 
-user_name = None
+def safe_calculate(expr):
+    try:
+        node = ast.parse(expr, mode="eval").body
+        return compute(node)
+    except Exception:
+        return None
 
-greetings = [
-    "Hey there!",
-    "Hello!",
-    "Hi! Nice to see you.",
-    "Yo! What's up?"
-]
-
-how_are_you_responses = [
-    "I'm doing great 😄",
-    "All good here!",
-    "Running smoothly!",
-    "Feeling very binary today 🤖"
-]
-
-thanks_responses = [
-    "You're welcome!",
-    "No problem 😄",
-    "Anytime!",
-    "Glad I could help!"
-]
-
-while True:
-    user = input("You: ").lower()
-
-    # exit
-    if user == "bye":
-        print("Chatbot: Goodbye! Catch you later.")
-        break
-
-    # remember name
-    elif "my name is" in user:
-        user_name = user.replace("my name is", "").strip().title()
-        print(f"Chatbot: Nice to meet you, {user_name}!")
-
-    elif "what is my name" in user:
-        if user_name:
-            print(f"Chatbot: Your name is {user_name}.")
-        else:
-            print("Chatbot: I don't know your name yet.")
-
-    # greetings
-    elif any(word in user for word in ["hi", "hello", "hey"]):
-        print("Chatbot:", random.choice(greetings))
-
-    # feelings
-    elif "how are you" in user:
-        print("Chatbot:", random.choice(how_are_you_responses))
-
-    # thanks (FIXED)
-    elif "thank" in user:
-        print("Chatbot:", random.choice(thanks_responses))
-
-    # time feature
-    elif "time" in user:
-        now = datetime.now().strftime("%H:%M:%S")
-        print("Chatbot: Current time is", now)
-
-    # calculator (type: calc 2+2)
-    elif user.startswith("calc"):
-        try:
-            expression = user.replace("calc", "").strip()
-            result = eval(expression)
-            print("Chatbot: Result =", result)
-        except:
-            print("Chatbot: Invalid calculation.")
-
-    # help
-    elif "help" in user:
-        print("Chatbot: Try greeting me, tell me your name, ask time, say thanks, or use calc 2+2")
-
-    # default response
+def compute(node):
+    if isinstance(node, ast.Num):
+        return node.n
+    elif isinstance(node, ast.BinOp):
+        return ops[type(node.op)](compute(node.left), compute(node.right))
+    elif isinstance(node, ast.UnaryOp):
+        return ops[type(node.op)](compute(node.operand))
     else:
-        print("Chatbot: Hmm... I'm still learning that one.")
+        raise ValueError
 
-# save chat session time
-with open("chat_log.txt", "a") as file:
-    file.write(f"Session ended at {datetime.now()}\n")
 
-print("Chat log saved.")
+# -----------------------------
+# Intent detection
+# -----------------------------
+def detect_intent(text):
+    t = text.lower().strip()
+
+    greeting_words = ["hi", "hello", "hey", "yo"]
+    if any(word in t for word in greeting_words):
+        return "greeting"
+
+    if "how are you" in t or "how r you" in t:
+        return "status"
+
+    if "your name" in t or "who are you" in t:
+        return "name"
+
+    if "time" in t:
+        return "time"
+
+    # math detection
+    if re.fullmatch(r"[0-9+\-*/(). ]+", t):
+        return "math"
+
+    if "help" in t:
+        return "help"
+
+    return "unknown"
+
+
+# -----------------------------
+# Response generator
+# -----------------------------
+def generate_reply(user_text):
+    intent = detect_intent(user_text)
+
+    if intent == "greeting":
+        return "Hey 👋 I'm online. What do you need?"
+
+    if intent == "status":
+        return "Running smooth like butter 😎"
+
+    if intent == "name":
+        return "I'm NeoBot 🤖 — nice to meet you."
+
+    if intent == "time":
+        now = datetime.datetime.now().strftime("%H:%M:%S")
+        return f"It's {now} right now ⏰"
+
+    if intent == "math":
+        result = safe_calculate(user_text)
+        if result is None:
+            return "That math looks sus 😅 try again."
+        return f"Answer: {result} 🧮"
+
+    if intent == "help":
+        return (
+            "Try these:\n"
+            "• say hi\n"
+            "• ask the time\n"
+            "• ask my name\n"
+            "• type math like 12/3+5"
+        )
+
+    return "I didn't get that yet 🤔"
+
+
+# -----------------------------
+# GUI functions
+# -----------------------------
+def send_msg(event=None):
+    msg = input_box.get().strip()
+    if not msg:
+        return
+
+    chat_box.insert(tk.END, f"You: {msg}\n")
+    reply = generate_reply(msg)
+    chat_box.insert(tk.END, f"Bot: {reply}\n\n")
+
+    input_box.delete(0, tk.END)
+    chat_box.yview(tk.END)
+
+
+# -----------------------------
+# Build UI
+# -----------------------------
+root = tk.Tk()
+root.title("Neo Rule Chatbot")
+root.geometry("520x600")
+root.configure(bg="#0f172a")
+
+chat_box = scrolledtext.ScrolledText(
+    root,
+    wrap=tk.WORD,
+    font=("Segoe UI", 12),
+    bg="#111827",
+    fg="white",
+)
+chat_box.pack(padx=12, pady=12, fill=tk.BOTH, expand=True)
+
+input_box = tk.Entry(
+    root,
+    font=("Segoe UI", 13),
+    bg="#1f2937",
+    fg="white",
+    insertbackground="white",
+)
+input_box.pack(padx=12, pady=8, fill=tk.X)
+input_box.bind("<Return>", send_msg)
+
+send_btn = tk.Button(
+    root,
+    text="Send",
+    command=send_msg,
+    bg="#22c55e",
+    fg="white",
+    font=("Segoe UI", 11, "bold"),
+)
+send_btn.pack(pady=6)
+
+root.mainloop()
